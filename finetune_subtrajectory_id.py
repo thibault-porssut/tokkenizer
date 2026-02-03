@@ -76,7 +76,7 @@ max_steps: int = 200_000                                       # Max number of f
 save_steps: int = 10000                                        # Interval for checkpoint saving
 learning_rate: float = 5e-4                                     # Fine-tuning learning rate
 grad_accumulation_steps: int = 1                                # Gradient accumulation steps
-image_aug: bool = True                                          # Whether to train with image augmentations
+image_aug: bool = False                                          # Whether to train with image augmentations
 shuffle_buffer_size: int = 1000    #100_000                          # Dataloader shuffle buffer size (can reduce if OOM)
 save_latest_checkpoint_only: bool = True                        # Whether to save only one checkpoint per run and
                                                                 #   continually overwrite the latest checkpoint

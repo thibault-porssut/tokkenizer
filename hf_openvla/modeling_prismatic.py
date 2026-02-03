@@ -563,25 +563,71 @@ class OpenVLAForActionPrediction(PrismaticForConditionalGeneration):
         unnorm_key = self._check_unnorm_key(self.norm_stats, unnorm_key)
         return self.norm_stats[unnorm_key]["action"]
     
-    def predict_subtraj_ID(
-                self, subtrajectory_id_tokenizer: SubtrajectoryTokenizer, input_ids: Optional[torch.LongTensor] = None, unnorm_key: Optional[str] = None, **kwargs: str
-            ) -> int:
-                """Thin wrapper around .generate() that decodes predicted actions and unnormalizes them."""
-                # If the special empty token ('') does not already appear after the colon (':') token in the prompt
-                # (after "OUT:" or "ASSISTANT:"), insert it to match the inputs seen at training time
-                if not torch.all(input_ids[:, -1] == 29871):
-                    input_ids = torch.cat(
-                        (input_ids, torch.unsqueeze(torch.Tensor([29871]).long(), dim=0).to(input_ids.device)), dim=1
-                    )
+def predict_subtraj_ID(
+            self, subtrajectory_id_tokenizer: SubtrajectoryTokenizer, base_tokenizer,input_ids: Optional[torch.LongTensor] = None, unnorm_key: Optional[str] = None, **kwargs: str
+        ) -> int:
+            """Thin wrapper around .generate() that decodes predicted actions and unnormalizes them."""
+            # If the special empty token ('') does not already appear after the colon (':') token in the prompt
+            # (after "OUT:" or "ASSISTANT:"), insert it to match the inputs seen at training time
+            # if not torch.all(input_ids[:, -1] == 29871):
+            #     input_ids = torch.cat(
+            #         (input_ids, torch.unsqueeze(torch.Tensor([29871]).long(), dim=0).to(input_ids.device)), dim=1
+            #     )
+            # print(f"INPUT IDS AFTER ADDING EMPTY TOKEN: {input_ids}")
+            # print(f"TESTTT")
+            max_new_tokens=1
+            # # Run VLA inference
+            # generated_ids = self.generate(input_ids, max_new_tokens=max_new_tokens, **kwargs)
 
-                max_new_tokens=1
-                # Run VLA inference
-                generated_ids = self.generate(input_ids, max_new_tokens=max_new_tokens, **kwargs)
+            # # Extract predicted action tokens and translate into (normalized) continuous actions
+            # predicted_action_token_ids = generated_ids[0, -max_new_tokens:].cpu().numpy()
+            # subtrajectory_id=subtrajectory_id_tokenizer.decode_token_ids_to_actions(predicted_action_token_ids)
+            generated_ids=self.generate(input_ids,max_new_tokens=max_new_tokens, **kwargs)
+            # 1. On prépare les tokens à chercher
+            # On encode "Out:" pour avoir la séquence exacte (souvent [24332, 29901] pour Llama)
+            target_sequence = base_tokenizer.encode("?Out: ", add_special_tokens=False)
+       
+            target_tensor = torch.tensor(target_sequence[1:]).to(generated_ids.device)
+            seq_len = len(target_tensor)
 
-                # Extract predicted action tokens and translate into (normalized) continuous actions
-                predicted_action_token_ids = generated_ids[0, -max_new_tokens:].cpu().numpy()
-                subtrajectory_id=subtrajectory_id_tokenizer.decode_token_ids_to_actions(predicted_action_token_ids)
+            # 2. On récupère les tokens générés (la séquence complète)
+            tokens =  generated_ids[0]  # On prend le premier batch
 
-                
 
-                return subtrajectory_id
+            # 3. On cherche la séquence "Out:" dans la liste
+            start_idx = -1
+     
+            for i in range(len(tokens) - seq_len):
+        
+                if torch.equal(tokens[i : i + seq_len], target_tensor):
+                    start_idx = i + seq_len  # On commence juste après le ":" de "Out:"
+                    # On ne s'arrête pas au premier trouvé (In:) mais on continue 
+                    # pour trouver le dernier (Out:)
+
+            # 4. On cherche la fin (le premier </s> après le Out:)
+            eos_token_id = base_tokenizer.eos_token_id
+            indices_eos = (tokens[start_idx:] == eos_token_id).nonzero(as_tuple=True)[0]
+
+
+
+            if len(indices_eos) > 0:
+                end_idx = start_idx + indices_eos[0]
+            else:
+                end_idx = len(tokens)
+
+            # 5. Extraction
+            actual_response_tokens = tokens[start_idx:end_idx]
+
+    
+
+            # # Si il y a un espace vide (token 29871) au début de la réponse, on le retire
+            # if len(actual_response_tokens) > 0 and actual_response_tokens[0] == 29871:
+            #     actual_response_tokens = actual_response_tokens[1:]
+
+            subtrajectory_id=subtrajectory_id_tokenizer.decode_token_ids_to_actions(actual_response_tokens)
+
+            # print(f"Action extraite : {processor.tokenizer.decode(actual_response_tokens)}")
+
+            
+
+            return subtrajectory_id
