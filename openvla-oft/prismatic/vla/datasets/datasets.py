@@ -46,11 +46,11 @@ class RLDSBatchTransform:
         prompt_builder = self.prompt_builder_fn("openvla")
 
         # Get future action chunk
-        print(f"--- DEBUG: action shape {actions.shape} ---")
+        # print(f"--- DEBUG: action shape {actions.shape} ---")
         future_actions = rlds_batch["action"][1:]
         # future_actions = future_actions[::ACTION_DIM]
 
-        print(f"--- DEBUG: future action shape {future_actions.shape} ---")
+        # print(f"--- DEBUG: future action shape {future_actions.shape} ---")
         
         future_actions_string = ''.join(self.action_tokenizer(future_actions))
 
@@ -59,9 +59,9 @@ class RLDSBatchTransform:
         action_chunk_string = current_action_string + future_actions_string
         action_chunk_string = "".join([action_chunk_string[i : i + ACTION_DIM] for i in range(0, len(action_chunk_string), len(current_action_string))])
         action_chunk_len = len(action_chunk_string)
-        print(f"--- DEBUG: string current action shape {len(current_action_string)} ---")
-        print(f"--- DEBUG: string future action shape {len(future_actions_string)} ---")
-        print(f"--- DEBUG: string  action shape {len(action_chunk_string)} ---")
+        # print(f"--- DEBUG: string current action shape {len(current_action_string)} ---")
+        # print(f"--- DEBUG: string future action shape {len(future_actions_string)} ---")
+        # print(f"--- DEBUG: string  action shape {len(action_chunk_string)} ---")
 
       
         conversation = [
