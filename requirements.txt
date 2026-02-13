@@ -1,0 +1,12 @@
+# Gestion des données
+tensorflow-datasets
+tqdm
+numpy
+
+# Traitement d'images et Visualisation
+pillow
+matplotlib
+ipython
+
+# Machine Learning
+scikit-learn
